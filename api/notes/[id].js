@@ -4,8 +4,10 @@ import { verifyToken } from '../../../middleware/auth.js';
 import { enableCors } from '../../../lib/cors.js';
 
 export default async function handler(req, res) {
+  // ✅ Handle CORS first (and stop if it's a preflight)
   if (enableCors(req, res)) return;
 
+  // ✅ Only run auth for actual requests (not OPTIONS)
   const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
@@ -49,7 +51,7 @@ export default async function handler(req, res) {
         .eq('id', id)
         .eq('tenant_id', tenantId)
         .select()
-        .single(); // 👈 return deleted row
+        .single(); // 👈 ensures we return the deleted row
 
       if (error) return res.status(500).json({ error: error.message });
       if (!data) return res.status(404).json({ error: 'Note not found' });
@@ -57,6 +59,7 @@ export default async function handler(req, res) {
       return res.json({ message: 'Note deleted', deleted: data });
     }
 
+    // Method not allowed
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     res.status(500).json({ error: err.message });
