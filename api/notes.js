@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   const tenantId = user.tenant_id;
 
   try {
-    // GET all notes
     if (req.method === 'GET') {
       const { data, error } = await supabase
         .from('notes')
@@ -23,11 +22,9 @@ export default async function handler(req, res) {
       return res.json(data);
     }
 
-    // POST create note
     if (req.method === 'POST') {
       const { title, content } = req.body;
 
-      // Check Free plan limit
       const { data: tenant } = await supabase
         .from('tenants')
         .select('plan')
@@ -51,7 +48,7 @@ export default async function handler(req, res) {
         .from('notes')
         .insert([{ title, content, tenant_id: tenantId }])
         .select()
-        .single(); // 👈 ensure we get the created row
+        .single();
 
       if (error) throw error;
       return res.status(201).json(data);
