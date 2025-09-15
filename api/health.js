@@ -1,5 +1,9 @@
+// api/health.js
+import { enableCors } from '../lib/cors.js';
+
 export default function handler(req, res) {
-  // Only allow GET requests
+  if (enableCors(req, res)) return;
+
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

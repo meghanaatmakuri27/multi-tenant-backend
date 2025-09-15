@@ -1,19 +1,20 @@
+// api/notes.js
 import { supabase } from '../lib/db.js';
 import { verifyToken } from '../middleware/auth.js';
+import { enableCors } from '../lib/cors.js';
 
 export default async function handler(req, res) {
+  if (enableCors(req, res)) return;
+
   const user = verifyToken(req);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const tenantId = user.tenant_id;
-  const { id } = req.query; // For GET/PUT/DELETE by ID
+  const { id } = req.query;
 
-  // GET all notes for tenant
+  // GET all notes
   if (req.method === 'GET' && !id) {
-    const { data, error } = await supabase
-      .from('notes')
-      .select('*')
-      .eq('tenant_id', tenantId);
+    const { data, error } = await supabase.from('notes').select('*').eq('tenant_id', tenantId);
     if (error) return res.status(500).json({ error: error.message });
     return res.json(data);
   }
@@ -35,11 +36,7 @@ export default async function handler(req, res) {
     const { title, content } = req.body;
 
     // Check Free plan limit
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('plan')
-      .eq('id', tenantId)
-      .single();
+    const { data: tenant } = await supabase.from('tenants').select('plan').eq('id', tenantId).single();
 
     if (tenant.plan === 'Free') {
       const { count } = await supabase
@@ -55,7 +52,6 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from('notes')
       .insert([{ title, content, tenant_id: tenantId }]);
-
     if (error) return res.status(500).json({ error: error.message });
     return res.status(201).json(data[0]);
   }
@@ -63,13 +59,11 @@ export default async function handler(req, res) {
   // PUT update note
   if (req.method === 'PUT' && id) {
     const { title, content } = req.body;
-
     const { data, error } = await supabase
       .from('notes')
       .update({ title, content })
       .eq('id', id)
       .eq('tenant_id', tenantId);
-
     if (error || !data) return res.status(404).json({ error: 'Note not found or update failed' });
     return res.json(data[0]);
   }
@@ -81,7 +75,6 @@ export default async function handler(req, res) {
       .delete()
       .eq('id', id)
       .eq('tenant_id', tenantId);
-
     if (error || !data) return res.status(404).json({ error: 'Note not found or delete failed' });
     return res.json({ message: 'Note deleted' });
   }
