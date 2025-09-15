@@ -79,17 +79,27 @@ export default async function handler(req, res) {
       return res.json(data[0]);
     }
 
-    // DELETE note
-    if (req.method === 'DELETE' && id) {
-      const { data, error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', id)
-        .eq('tenant_id', tenantId);
+   // DELETE note
+if (req.method === 'DELETE' && id) {
+  const { data, error } = await supabase
+    .from('notes')
+    .delete()
+    .eq('id', id)
+    .eq('tenant_id', tenantId);
 
-      if (error || !data) return res.status(404).json({ error: 'Note not found or delete failed' });
-      return res.json({ message: 'Note deleted' });
-    }
+  if (error) {
+    console.error('Supabase DELETE error:', error);
+    return res.status(500).json({ error: 'Failed to delete note' });
+  }
+
+  if (!data || data.length === 0) {
+    return res.status(404).json({ 
+      error: 'Note not found or does not belong to your tenant' 
+    });
+  }
+
+  return res.json({ message: 'Note deleted', deleted: data[0] });
+}
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
