@@ -1,4 +1,3 @@
-// api/tenants/[slug]/upgrade.js
 import { supabase } from '../../../lib/db.js';
 import { verifyToken } from '../../../middleware/auth.js';
 import { enableCors } from '../../../lib/cors.js';
