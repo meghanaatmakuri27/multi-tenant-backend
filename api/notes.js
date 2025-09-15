@@ -1,6 +1,7 @@
-import { supabase } from '../lib/db.js';
-import { verifyToken } from '../middleware/auth.js';
-import { enableCors } from '../lib/cors.js';
+// pages/api/notes.js
+import { supabase } from '../../lib/db.js';
+import { verifyToken } from '../../middleware/auth.js';
+import { enableCors } from '../../lib/cors.js';
 
 export default async function handler(req, res) {
   if (enableCors(req, res)) return;
@@ -9,30 +10,16 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const tenantId = user.tenant_id;
-  const { id } = req.query;
 
   try {
     // GET all notes
-    if (req.method === 'GET' && !id) {
+    if (req.method === 'GET') {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
         .eq('tenant_id', tenantId);
 
       if (error) throw error;
-      return res.json(data);
-    }
-
-    // GET single note
-    if (req.method === 'GET' && id) {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('id', id)
-        .single();
-
-      if (error) return res.status(404).json({ error: 'Note not found' });
       return res.json(data);
     }
 
@@ -54,52 +41,21 @@ export default async function handler(req, res) {
           .eq('tenant_id', tenantId);
 
         if (count >= 3) {
-          return res.status(403).json({ error: 'Free plan limit reached. Upgrade to Pro.' });
+          return res
+            .status(403)
+            .json({ error: 'Free plan limit reached. Upgrade to Pro.' });
         }
       }
 
       const { data, error } = await supabase
         .from('notes')
-        .insert([{ title, content, tenant_id: tenantId }]);
+        .insert([{ title, content, tenant_id: tenantId }])
+        .select()
+        .single(); // 👈 ensure we get the created row
 
       if (error) throw error;
-      return res.status(201).json(data[0]);
+      return res.status(201).json(data);
     }
-
-    // PUT update note
-    if (req.method === 'PUT' && id) {
-      const { title, content } = req.body;
-      const { data, error } = await supabase
-        .from('notes')
-        .update({ title, content })
-        .eq('id', id)
-        .eq('tenant_id', tenantId);
-
-      if (error || !data) return res.status(404).json({ error: 'Note not found or update failed' });
-      return res.json(data[0]);
-    }
-
-   // DELETE note
-if (req.method === 'DELETE' && id) {
-  const { data, error } = await supabase
-    .from('notes')
-    .delete()
-    .eq('id', id)
-    .eq('tenant_id', tenantId);
-
-  if (error) {
-    console.error('Supabase DELETE error:', error);
-    return res.status(500).json({ error: 'Failed to delete note' });
-  }
-
-  if (!data || data.length === 0) {
-    return res.status(404).json({ 
-      error: 'Note not found or does not belong to your tenant' 
-    });
-  }
-
-  return res.json({ message: 'Note deleted', deleted: data[0] });
-}
 
     res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
